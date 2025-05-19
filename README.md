@@ -62,7 +62,7 @@ I was required to write a query to find customers with at least one funded savin
 
  ### Challenges & Resolution
 -  Pivoting plan counts from rows into two columns (savings_count, investment_count).
- * Solution: Used COUNT(DISTINCT CASE WHEN plan_type = … THEN plan_id END) inside a grouped query.
+   * Solution: Used COUNT(DISTINCT CASE WHEN plan_type = … THEN plan_id END) inside a grouped query.
 
 - Matching foreign-key names: Ensured ssa.plan_id and w.plan_id aligned with the schema rather than savings_id.
 
@@ -74,24 +74,24 @@ The goal was to classify customers as High/Medium/Low frequency based on their a
 
 ### Approach
 - CTE transaction_counts
- * Counted total transactions per customer.
+  * Counted total transactions per customer.
 
 - Captured first and last month of activity via DATE_TRUNC('month', MIN/MAX(created_on)).
- * CTE avg_transactions
+  * CTE avg_transactions
 
 - Calculated the number of months active with DATE_PART arithmetic + GREATEST(...,1) guard.
- * Computed avg_transactions_per_month → ROUND((total_transactions / total_months)::numeric, 2).
+  * Computed avg_transactions_per_month → ROUND((total_transactions / total_months)::numeric, 2).
 
 - Final SELECT
- * Assigned frequency_category via a CASE on the rounded average.
- * Aggregated counts and averaged the per-customer averages to produce: frequency_category | customer_count | avg_transactions_per_month
+  * Assigned frequency_category via a CASE on the rounded average.
+  * Aggregated counts and averaged the per-customer averages to produce: frequency_category | customer_count | avg_transactions_per_month
 
 ### Challenges And Resolution
 - Division by zero if a customer had only one month of activity.
- * Solution: Used GREATEST(calculated_months, 1) to enforce a minimum of 1 month.
+  * Solution: Used GREATEST(calculated_months, 1) to enforce a minimum of 1 month.
 
-- Type mismatches in ROUND().
- * Solution: Cast the expression to numeric before rounding.
+- Type mismatches in ROUND(). 
+  * Solution: Cast the expression to numeric before rounding.
 
 ---
 
@@ -101,16 +101,17 @@ The goal was to find all active accounts (savings or investments) with no transa
 
 ### Approach
 - CTE last_tx
- * Retrieved each account’s most recent transaction date.
+  * Retrieved each account’s most recent transaction date.
 
 - Main Query
- * Left-joined plans_plan to last_tx so accounts with zero transactions still appear.
- * Computed inactivity_days by subtracting the last_transaction_date (or created_on) from CURRENT_DATE.
- * Filtered for status = active (or is_deleted = 0) and (last_tx < current_date - INTERVAL '365 days' OR last_tx IS NULL)
+  
+  * Left-joined plans_plan to last_tx so accounts with zero transactions still appear.
+  * Computed inactivity_days by subtracting the last_transaction_date (or created_on) from CURRENT_DATE.
+  * Filtered for status = active (or is_deleted = 0) and (last_tx < current_date - INTERVAL '365 days' OR last_tx IS NULL)
 
 ### Challenges & Resolution
 - Date arithmetic quirks: Initially tried EXTRACT(DAY FROM date1 - date2) which fails when the difference is an integer.
- * Solution: Subtracted dates directly → yields an integer for days difference.
+  * Solution: Subtracted dates directly → yields an integer for days difference.
 
 ---
 
@@ -120,26 +121,26 @@ I was required to calculate for each customer, account tenure (months since sign
 
 ### Approach
 - CTE user_tx
- * Aggregated COUNT(*) → total_transactions and AVG(amount) → avg_tx_value.
+  * Aggregated COUNT(*) → total_transactions and AVG(amount) → avg_tx_value.
 
 - CTE user_stats
- * Computed tenure in months:
- ```
- GREATEST(
-   (year_diff * 12 + month_diff),
-   1
- ) AS tenure_months
- ```
- * Joined to bring in total_transactions and avg_tx_value.
+  * Computed tenure in months:
+  ```
+  GREATEST(
+    (year_diff * 12 + month_diff),
+    1
+  ) AS tenure_months
+  ```
+  * Joined to bring in total_transactions and avg_tx_value.
 
 - Final SELECT
- * Calculated transactions-per-month → total_transactions / tenure_months.
- * Multiplied by 12 and by profit per transaction (avg_tx_value * 0.001).
- * Rounded to two decimals.
+  * Calculated transactions-per-month → total_transactions / tenure_months.
+  * Multiplied by 12 and by profit per transaction (avg_tx_value * 0.001).
+  * Rounded to two decimals.
 
 ### Challenges & Resolution
 - ROUND(double precision, integer) error: Found that ROUND() expects a numeric first argument.
- * Solution: Cast intermediate result to numeric before applying ROUND(...,2)
+  * Solution: Cast intermediate result to numeric before applying ROUND(...,2)
 
 ---
 
@@ -147,6 +148,6 @@ I was required to calculate for each customer, account tenure (months since sign
 ## Credits: Research and help Links
 These helped with refreshing my mind on how to use certain functions in producing envisioned results.
 
-- [Coalesce]("https://www.geeksforgeeks.org/postgresql-coalesce/")
-- [Joins]("https://www.geeksforgeeks.org/postgresql-joins/")
-- [Importing a CSV file ]("https://www.geeksforgeeks.org/postgresql-import-csv-file-into-table/")
+- [Coalesce](https://www.geeksforgeeks.org/postgresql-coalesce/)
+- [Joins](https://www.geeksforgeeks.org/postgresql-joins/)
+- [Importing a CSV file ](https://www.geeksforgeeks.org/postgresql-import-csv-file-into-table/)
